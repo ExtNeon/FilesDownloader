@@ -1,62 +1,84 @@
 import java.io.*;
 import java.net.URL;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Main {
+    private static final String URL_FILE = "src\\svc_files\\inFile.txt";
+    private static final String MUSIC_LIST_FILE = "src\\svc_files\\outFile.txt";
+    private static final String PATH_FOR_LOAD = "src\\download\\";
+    private static final int PARALLEL_LOAD_LIMITER = 80;
 
-    private static final String IN_FILE_TXT = "src\\example\\threaddemo\\downloadmusic\\inFile.txt";
-    private static final String OUT_FILE_TXT = "src\\example\\threaddemo\\downloadmusic\\outFile.txt";
-    private static final String PATH_TO_MUSIC = "src\\example\\threaddemo\\downloadmusic\\music";
+    private static ArrayList<String> musicLinks = new ArrayList<>();
 
     public static void main(String[] args) {
-        String Url;
-        try (BufferedReader inFile = new BufferedReader(new FileReader(IN_FILE_TXT));
-             BufferedWriter outFile = new BufferedWriter(new FileWriter(OUT_FILE_TXT))) {
-            while ((Url = inFile.readLine()) != null) {
-                URL url = new URL(Url);
-
-                String result;
-                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(url.openStream()))) {
-                    result = bufferedReader.lines().collect(Collectors.joining("\n"));
+        try (BufferedReader urlFile = new BufferedReader(new FileReader(URL_FILE));
+             BufferedWriter musicListFile = new BufferedWriter(new FileWriter(MUSIC_LIST_FILE))) {
+            String readedUrl;
+            while ((readedUrl = urlFile.readLine()) != null) {
+                String pageText;
+                try (BufferedReader pageReader = new BufferedReader(new InputStreamReader(new URL(readedUrl).openStream()))) {
+                    pageText = pageReader.lines().collect(Collectors.joining("\n"));
                 }
-                Pattern email_pattern = Pattern.compile("\\s*(?<=data-url\\s?=\\s?\")[^>]*\\/*(?=\")");
-                Matcher matcher = email_pattern.matcher(result);
-                int i = 0;
-                while (matcher.find() && i < 2) {
-                    outFile.write(matcher.group() + "\r\n");
-                    i++;
+
+                Matcher musicMatcher = Pattern.compile("(?<=data-url=\")[^\"]*(?=\")").matcher(pageText);
+                for (int i = 0; musicMatcher.find() && i < PARALLEL_LOAD_LIMITER; i++) {
+                    musicListFile.write(musicMatcher.group() + "\r\n");
+                    musicLinks.add(musicMatcher.group());
+                    System.out.println("[" + i + "] >> " + musicLinks.get(i) + " - founded."); //Надо бы тут экономить память.
                 }
             }
+            ArrayList<URLDownloader> downloaders = new ArrayList<>(musicLinks.size());
+            for (int count = 0; count < musicLinks.size(); count++) {
+                downloaders.add(new URLDownloader(PATH_FOR_LOAD + count + ".mp3", musicLinks.get(count)));
+                downloaders.get(count).download();
+                System.out.println(downloaders.get(count).getFilename() + " - starting download...");
+            }
+            int downloadedPercent;
+            int i = 0;
+            long lastMsCount;
+            lastMsCount = System.currentTimeMillis();
+            while (downloaders.size() > 0) {
+                if (i >= downloaders.size()) {
+                    i = 0;
+                } else {
+                    if (downloaders.get(i).isDownloaded()) {
+                        downloadedPercent = 100 - (((downloaders.size() - 1) * 100) / musicLinks.size());
+                        System.out.print("\r" + downloaders.get(i).getFilename() + " - done\n" + getPercentLine(downloadedPercent) + " done");
+                        downloaders.remove(i);
+                        i = 0;
+                    } else i++;
+                }
+            }
+            System.out.println("\n" + musicLinks.size() + " files was downloaded successful.\n" +
+                    "It spend: " + formatSecondsToNormalTime((int)((System.currentTimeMillis() - lastMsCount) / 1000)));
         } catch (IOException e) {
             e.printStackTrace();
         }
-        try (BufferedReader musicFile = new BufferedReader(new FileReader(OUT_FILE_TXT))) {
-            String music;
-            int count = 0;
-            try {
-                while ((music = musicFile.readLine()) != null) {
-                    downloadUsingNIO(music, PATH_TO_MUSIC + String.valueOf(count) + ".mp3");
-                    count++;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
     }
 
-    private static void downloadUsingNIO(String strUrl, String file) throws IOException {
-        URL url = new URL(strUrl);
-        ReadableByteChannel byteChannel = Channels.newChannel(url.openStream());
-        FileOutputStream stream = new FileOutputStream(file);
-        stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
-        stream.close();
-        byteChannel.close();
+    private static String getPercentLine(int percents) {
+        StringBuilder temp = new StringBuilder("[");
+        percents /= 2;
+        for (int i = 1; i <= 50; i++) {
+            if (i <= percents) {
+                temp.append('=');
+            } else {
+                temp.append(' ');
+            }
+        }
+        temp.append("] | ");
+        temp.append(percents * 2);
+        temp.append('%');
+        return temp.toString();
+    }
+
+    private static String formatSecondsToNormalTime(int seconds) {
+        int s = seconds % 60;
+        int m = (seconds / 60) % 60;
+        int h = (seconds / (60 * 60)) % 24;
+        return String.format("%d:%02d:%02d", h, m, s);
     }
 }
