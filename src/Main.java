@@ -1,3 +1,5 @@
+import com.sun.deploy.net.HttpResponse;
+
 import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
@@ -9,7 +11,7 @@ public class Main {
     private static final String URL_FILE = "src\\svc_files\\inFile.txt";
     private static final String MUSIC_LIST_FILE = "src\\svc_files\\outFile.txt";
     private static final String PATH_FOR_LOAD = "src\\download\\";
-    private static final int PARALLEL_LOAD_LIMITER = 80;
+    private static final int PARALLEL_LOAD_LIMITER = 4;
 
     private static ArrayList<String> musicLinks = new ArrayList<>();
 
@@ -18,16 +20,20 @@ public class Main {
              BufferedWriter musicListFile = new BufferedWriter(new FileWriter(MUSIC_LIST_FILE))) {
             String readedUrl;
             while ((readedUrl = urlFile.readLine()) != null) {
-                String pageText;
+                if (readedUrl.startsWith("//")) continue;
+                System.out.println("Processing \"" + readedUrl + "\"...");
+                String pageText = "";
                 try (BufferedReader pageReader = new BufferedReader(new InputStreamReader(new URL(readedUrl).openStream()))) {
                     pageText = pageReader.lines().collect(Collectors.joining("\n"));
+                } catch (IOException e) {
+                    System.err.println("\"" + readedUrl + "\" - IO error. Maybe 403 forbidden.");
                 }
 
                 Matcher musicMatcher = Pattern.compile("(?<=data-url=\")[^\"]*(?=\")").matcher(pageText);
                 for (int i = 0; musicMatcher.find() && i < PARALLEL_LOAD_LIMITER; i++) {
                     musicListFile.write(musicMatcher.group() + "\r\n");
                     musicLinks.add(musicMatcher.group());
-                    System.out.println("[" + i + "] >> " + musicLinks.get(i) + " - founded."); //Надо бы тут экономить память.
+                    System.out.println("[" + musicLinks.size() + "] >> " + musicLinks.get(musicLinks.size() - 1) + " - founded."); //Надо бы тут экономить память.
                 }
             }
             ArrayList<URLDownloader> downloaders = new ArrayList<>(musicLinks.size());
@@ -36,10 +42,12 @@ public class Main {
                 downloaders.get(count).download();
                 System.out.println(downloaders.get(count).getFilename() + " - starting download...");
             }
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {}
             int downloadedPercent;
             int i = 0;
-            long lastMsCount;
-            lastMsCount = System.currentTimeMillis();
+            long lastMsCount = System.currentTimeMillis();
             while (downloaders.size() > 0) {
                 if (i >= downloaders.size()) {
                     i = 0;
@@ -55,6 +63,7 @@ public class Main {
             System.out.println("\n" + musicLinks.size() + " files was downloaded successful.\n" +
                     "It spend: " + formatSecondsToNormalTime((int)((System.currentTimeMillis() - lastMsCount) / 1000)));
         } catch (IOException e) {
+            System.err.println("Global IO error.");
             e.printStackTrace();
         }
     }

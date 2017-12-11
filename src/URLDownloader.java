@@ -2,6 +2,7 @@ import sun.misc.Regexp;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
@@ -49,11 +50,16 @@ public class URLDownloader extends Thread {
     }
 
     private void downloadUsingNIO(String strUrl, String file) throws IOException {
-        ReadableByteChannel byteChannel = Channels.newChannel(new URL(strUrl).openStream());
-        FileOutputStream stream = new FileOutputStream(file);
-        stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
-        stream.close();
-        byteChannel.close();
+        try {
+            URL tmpurl = new URL(strUrl);
+            ReadableByteChannel byteChannel = Channels.newChannel(tmpurl.openStream());
+            FileOutputStream stream = new FileOutputStream(file);
+            stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
+            stream.close();
+            byteChannel.close();
+        } catch (MalformedURLException e) {
+            System.err.println("URL parsing error: \"" + strUrl + "\". Unknown protocol. Stopping download...");
+        }
     }
 
 }
