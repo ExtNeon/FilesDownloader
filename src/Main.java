@@ -21,6 +21,9 @@ public class Main {
             System.out.println("Complete.");
     }
 
+    /**
+     * Попытка вс
+     */
     private static void getMusicLinks() {
         try (BufferedWriter musicListFile = new BufferedWriter(new FileWriter(MUSIC_LIST_FILE))) {
             ArrayList<String> URLFromFile = readAllLinksInFile(URL_FILE);
