@@ -43,6 +43,9 @@ public class Main {
 
     private static void waitWhileAllSongsWillBeDownloaded(ArrayList<URLDownloader> downloaders) {
         for (int i = 0; downloaders.size() > 0; i++) {
+            if (i > downloaders.size()) {
+                i = 0;
+            }
             if (downloaders.get(i).isDownloaded()) {
                 System.out.print("\r" + downloaders.get(i).getFilename() + " - done");
                 downloaders.remove(i);
