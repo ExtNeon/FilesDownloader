@@ -37,24 +37,16 @@ public class Main {
     private static void downloadMusic() {
         ArrayList<URLDownloader> downloaders = createDownloaders();
         delay(1000);
-        long lastMsCount = System.currentTimeMillis();
         waitWhileAllSongsWillBeDownloaded(downloaders);
-        System.out.println("\n" + musicLinks.size() + " files was downloaded successful.\n" +
-                "It spend: " + formatSecondsToNormalTime((int)((System.currentTimeMillis() - lastMsCount) / 1000)));
+        System.out.println("\n" + musicLinks.size() + " files was downloaded successful.\n");
     }
 
     private static void waitWhileAllSongsWillBeDownloaded(ArrayList<URLDownloader> downloaders) {
-        int downloadedPercent, i = 0;
-        while (downloaders.size() > 0) {
-            if (i >= downloaders.size()) {
+        for (int i = 0; downloaders.size() > 0; i++) {
+            if (downloaders.get(i).isDownloaded()) {
+                System.out.print("\r" + downloaders.get(i).getFilename() + " - done");
+                downloaders.remove(i);
                 i = 0;
-            } else {
-                if (downloaders.get(i).isDownloaded()) {
-                    downloadedPercent = 100 - (((downloaders.size() - 1) * 100) / musicLinks.size());
-                    System.out.print("\r" + downloaders.get(i).getFilename() + " - done\n" + getPercentLine(downloadedPercent) + " done");
-                    downloaders.remove(i);
-                    i = 0;
-                } else i++;
             }
         }
     }
@@ -69,28 +61,6 @@ public class Main {
         return downloaders;
     }
 
-    private static String getPercentLine(int percents) {
-        StringBuilder temp = new StringBuilder("[");
-        percents /= 2;
-        for (int i = 1; i <= 50; i++) {
-            if (i <= percents) {
-                temp.append('=');
-            } else {
-                temp.append(' ');
-            }
-        }
-        temp.append("] | ");
-        temp.append(percents * 2);
-        temp.append('%');
-        return temp.toString();
-    }
-
-    private static String formatSecondsToNormalTime(int seconds) {
-        int s = seconds % 60;
-        int m = (seconds / 60) % 60;
-        int h = (seconds / (60 * 60)) % 24;
-        return String.format("%d:%02d:%02d", h, m, s);
-    }
 
     private static String getPageCode(String inUrl) {
         try (BufferedReader pageReader = new BufferedReader(new InputStreamReader(new URL(inUrl).openStream()))) {
