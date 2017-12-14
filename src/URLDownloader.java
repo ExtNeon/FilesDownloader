@@ -1,5 +1,3 @@
-import sun.misc.Regexp;
-
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -8,7 +6,8 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
 /**
- * Created by Кирилл on 11.12.2017.
+ * Класс представляет собой загрузчик файла, находящегося по определённому URL - адресу. Загружает файл в отдельном потоке.
+ * @author Малякин Кирилл.
  */
 public class URLDownloader extends Thread {
 
@@ -28,27 +27,40 @@ public class URLDownloader extends Thread {
 
     }
 
-    public URLDownloader(String saveAs, String URL) {
+    /**
+     * @param saveAs Путь и имя файла, в который будет осуществляться загрузка.
+     * @param URL Ссылка, с которой будет осуществляться загрузка.
+     */
+    URLDownloader(String saveAs, String URL) {
         this.filename = saveAs;
         this.URL = URL;
     }
 
-    public void download() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
+    /**
+     * Запускает загрузку файла в отдельном потоке.
+     */
+    void download() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
         start();
     }
 
-    public boolean isDownloaded() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
+    /**
+     * Возвращает состояние загрузки.
+     * @return истина, если файл уже загружен, ложь во всех остальных случаях.
+     */
+    boolean isDownloaded() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
         return !this.isAlive();
     }
 
-    public String getFilename() {
+    String getFilename() {
         return filename;
     }
 
-    public String getURL() {
-        return URL;
-    }
-
+    /**
+     * Загружает файл, используя NIO.
+     * @param strUrl Ссылка, с которой будет осуществляться загрузка.
+     * @param file Файл, в который будет осущствляться загрузка.
+     * @throws IOException В случае проблем ввода - вывода в файл.
+     */
     private void downloadUsingNIO(String strUrl, String file) throws IOException {
         try {
             URL tmpurl = new URL(strUrl);
