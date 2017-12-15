@@ -64,11 +64,13 @@ public class URLDownloader extends Thread {
     private void downloadUsingNIO(String strUrl, String file) throws IOException {
         try {
             URL tmpurl = new URL(strUrl);
-            ReadableByteChannel byteChannel = Channels.newChannel(tmpurl.openStream());
-            FileOutputStream stream = new FileOutputStream(file);
-            stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
-            stream.close();
-            byteChannel.close();
+            try (ReadableByteChannel byteChannel = Channels.newChannel(tmpurl.openStream());
+                 FileOutputStream stream = new FileOutputStream(file)) {
+
+                stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
+                stream.close();
+                byteChannel.close();
+            }
         } catch (MalformedURLException e) {
             System.err.println("URL parsing error: \"" + strUrl + "\". Unknown protocol. Stopping download...");
         }
