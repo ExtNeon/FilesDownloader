@@ -1,3 +1,5 @@
+package sys_parts;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -12,34 +14,31 @@ import java.nio.channels.ReadableByteChannel;
 public class URLDownloader extends Thread {
 
     private String filename;
-    private String URL;
+    private String fileURL;
+    private long timeOfDownload = -1;
+    private long fileSize = -1;
+
+    /**
+     * @param filename Путь и имя файла, в который будет осуществляться загрузка.
+     * @param inpURL   Ссылка, с которой будет осуществляться загрузка.
+     */
+    public URLDownloader(String filename, String inpURL) {
+        this.filename = filename;
+        this.fileURL = inpURL;
+    }
 
     public void run() {
         try {
-            downloadUsingNIO(URL, filename);
+            downloadUsingNIO(fileURL, filename);
         } catch (IOException e) {
-            try {
-                throw e; //Горождение огорода для того, чтобы перебросить исключение. Обожаю.
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            }
+            e.printStackTrace();
         }
-
-    }
-
-    /**
-     * @param saveAs Путь и имя файла, в который будет осуществляться загрузка.
-     * @param URL Ссылка, с которой будет осуществляться загрузка.
-     */
-    URLDownloader(String saveAs, String URL) {
-        this.filename = saveAs;
-        this.URL = URL;
     }
 
     /**
      * Запускает загрузку файла в отдельном потоке.
      */
-    void download() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
+    public void download() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
         start();
     }
 
@@ -47,11 +46,11 @@ public class URLDownloader extends Thread {
      * Возвращает состояние загрузки.
      * @return истина, если файл уже загружен, ложь во всех остальных случаях.
      */
-    boolean isDownloaded() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
+    public boolean isDownloaded() { //Небольшие обёртки, чтобы выглядело чуть - чуть солиднее.
         return !this.isAlive();
     }
 
-    String getFilename() {
+    public String getFilename() {
         return filename;
     }
 
@@ -63,17 +62,28 @@ public class URLDownloader extends Thread {
      */
     private void downloadUsingNIO(String strUrl, String file) throws IOException {
         try {
+            long tempTimeCounter = System.currentTimeMillis();
             URL tmpurl = new URL(strUrl);
             try (ReadableByteChannel byteChannel = Channels.newChannel(tmpurl.openStream());
                  FileOutputStream stream = new FileOutputStream(file)) {
-
                 stream.getChannel().transferFrom(byteChannel, 0, Long.MAX_VALUE);
-                stream.close();
-                byteChannel.close();
+                fileSize = stream.getChannel().size();
             }
+            timeOfDownload = System.currentTimeMillis() - tempTimeCounter;
         } catch (MalformedURLException e) {
-            System.err.println("URL parsing error: \"" + strUrl + "\". Unknown protocol. Stopping download...");
+            System.err.println("fileURL parsing error: \"" + strUrl + "\". Unknown protocol. Stopping download...");
         }
     }
 
+    public long getTimeOfDownload() {
+        return timeOfDownload == 0 ? 1 : timeOfDownload;
+    }
+
+    public long getFileSize() {
+        return fileSize == 0 ? 1 : fileSize;
+    }
+
+    public String getURL() {
+        return fileURL;
+    }
 }
