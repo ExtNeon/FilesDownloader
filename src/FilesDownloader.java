@@ -1,8 +1,15 @@
+import sys_parts.BTRL.BTRLContainer;
+import sys_parts.BTRL.exceptions.FieldNotExistException;
+import sys_parts.BTRL.exceptions.ParsingException;
+import sys_parts.BTRL.sys_parts.BTRLRecord;
+import sys_parts.DownloadRecord;
+import sys_parts.SiteResourcesParser;
 import sys_parts.URLDownloader;
 
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 /**
  * @author доработка - Малякин Кирилл.
@@ -10,16 +17,11 @@ import java.util.ArrayList;
 
 
 public class FilesDownloader {
-    private static final String URL_FILE = "src\\svc_files\\inFile.txt"; //Файл со ссылками на сайты
+
+    private static final String URL_FILE = "src\\svc_files\\inFile.txt"; //Файл с записями
     private static final String DOWNLOAD_RECORDS_LIST_FILE = "src\\svc_files\\outFile.txt"; //Файл, в который сохраняются ссылки на музыку
 
-    private static final String INFILE_LINE_DELIMITER = ";";
-
-    private static final String PATH_FOR_LOAD = "src\\download\\"; //Папка, в которую загружается музыка.
-
-    private static final int DOWNLOAD_LIMIT_FOR_SITE = 2; //Максимальное количество ссылок с одного сайта.
-
-    private static ArrayList<DownloadSite> sites = new ArrayList<>();
+    private static ArrayList<SiteResourcesParser> sites = new ArrayList<>(); //Сайты
 
     public static void main(String[] args) {
         readDownloadRecords();
@@ -28,18 +30,27 @@ public class FilesDownloader {
     }
 
     private static void readDownloadRecords() {
-        try (BufferedWriter inputRecordsFile = new BufferedWriter(new FileWriter(DOWNLOAD_RECORDS_LIST_FILE))) {
-            ArrayList<String> linesFromFile = readAllLinesInFile(URL_FILE);
-            for (String currentLine : linesFromFile) {
-                DownloadRecord downloadRecord = getParsedLineInfo(currentLine);
-                System.out.println("Processing \"" + downloadRecord.site_url + "\"...");
-                sites.add(new DownloadSite(downloadRecord.site_url, downloadRecord.matcher_pattern, downloadRecord.file_extension, PATH_FOR_LOAD, DOWNLOAD_LIMIT_FOR_SITE, downloadRecord.absoluteURLlinkToResources));
-                for (URLDownloader downloader : sites.get(sites.size() - 1).getDownloaders()) {
-                    inputRecordsFile.write(downloader.getURL() + "\n");
+        try (BufferedWriter inputRecordsFile = new BufferedWriter(new FileWriter(DOWNLOAD_RECORDS_LIST_FILE));
+             BufferedReader inFileReader = new BufferedReader(new FileReader(URL_FILE))) {
+            BTRLContainer sitesQuequeContainer = new BTRLContainer(inFileReader.lines().collect(Collectors.joining("\n")));
+            for (BTRLRecord currentRecord : sitesQuequeContainer.getRecords()) {
+                try {
+                    DownloadRecord temporaryDownloadRecord = new DownloadRecord(currentRecord);
+                    System.out.println("Processing \"" + temporaryDownloadRecord.site_url + "\"...");
+                    sites.add(new SiteResourcesParser(temporaryDownloadRecord));
+                    for (URLDownloader downloader : sites.get(sites.size() - 1).getDownloaders()) {
+                        inputRecordsFile.write(downloader.getURL() + "\n");
+                    }
+
+                } catch (FieldNotExistException ignored) {
+                    System.err.println("Error #14: Field not exist");
                 }
             }
         } catch (IOException e) {
             System.err.println("Global IO error.");
+            e.printStackTrace();
+        } catch (ParsingException e) {
+            System.err.println("Input file parsing error.");
             e.printStackTrace();
         }
     }
@@ -48,7 +59,7 @@ public class FilesDownloader {
      * Метод скачивает музыку из сохранённых ссылок в заранее определённую папку.
      */
     private static void downloadFiles() {
-        for (DownloadSite site : sites) {
+        for (SiteResourcesParser site : sites) {
             for (URLDownloader downloader : site.getDownloaders()) {
                 downloader.download();
                 System.out.println(downloader.getFilename() + " - starting download...");
@@ -155,22 +166,9 @@ public class FilesDownloader {
         }
     }
 
-    private static DownloadRecord getParsedLineInfo(String inputLine) {
-        DownloadRecord result = new DownloadRecord();
-        StringBuilder builder = new StringBuilder(inputLine);
-        result.site_url = builder.substring(0, builder.indexOf(INFILE_LINE_DELIMITER));
-        builder.delete(0, builder.indexOf(INFILE_LINE_DELIMITER) + 1);
-        result.matcher_pattern = builder.substring(0, builder.indexOf(INFILE_LINE_DELIMITER));
-        builder.delete(0, builder.indexOf(INFILE_LINE_DELIMITER) + 1);
-        result.file_extension = builder.substring(0, builder.indexOf(INFILE_LINE_DELIMITER));
-        builder.delete(0, builder.indexOf(INFILE_LINE_DELIMITER) + 1);
-        result.absoluteURLlinkToResources = builder.toString();
-        return result;
-    }
-
-    private static ArrayList<URLDownloader> collectAllDownloadersFromSites(ArrayList<DownloadSite> sites) {
+    private static ArrayList<URLDownloader> collectAllDownloadersFromSites(ArrayList<SiteResourcesParser> sites) {
         ArrayList<URLDownloader> downloaders = new ArrayList<>();
-        for (DownloadSite site : sites) {
+        for (SiteResourcesParser site : sites) {
             downloaders.addAll(site.getDownloaders());
         }
         return downloaders;
