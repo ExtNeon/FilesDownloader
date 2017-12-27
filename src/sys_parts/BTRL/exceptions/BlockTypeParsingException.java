@@ -3,13 +3,13 @@ package sys_parts.BTRL.exceptions;
 /**
  * Created by Кирилл on 25.12.2017.
  */
-public class RecordTypeParsingException extends ParsingException {
+public class BlockTypeParsingException extends ParsingException {
     /**
      * Constructs a new exception with {@code null} as its detail message.
      * The cause is not initialized, and may subsequently be initialized by a
      * call to {@link #initCause}.
      */
-    public RecordTypeParsingException() {
+    public BlockTypeParsingException() {
     }
 
     /**
@@ -20,7 +20,7 @@ public class RecordTypeParsingException extends ParsingException {
      * @param message the detail message. The detail message is saved for
      *                later retrieval by the {@link #getMessage()} method.
      */
-    public RecordTypeParsingException(String message) {
+    public BlockTypeParsingException(String message) {
         super(message);
     }
 
@@ -38,7 +38,7 @@ public class RecordTypeParsingException extends ParsingException {
      *                unknown.)
      * @since 1.4
      */
-    public RecordTypeParsingException(String message, Throwable cause) {
+    public BlockTypeParsingException(String message, Throwable cause) {
         super(message, cause);
     }
 
@@ -55,7 +55,7 @@ public class RecordTypeParsingException extends ParsingException {
      *              unknown.)
      * @since 1.4
      */
-    public RecordTypeParsingException(Throwable cause) {
+    public BlockTypeParsingException(Throwable cause) {
         super(cause);
     }
 
@@ -73,7 +73,7 @@ public class RecordTypeParsingException extends ParsingException {
      *                           be writable
      * @since 1.7
      */
-    public RecordTypeParsingException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
+    public BlockTypeParsingException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
 }

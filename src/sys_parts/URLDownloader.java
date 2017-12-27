@@ -17,6 +17,7 @@ public class URLDownloader extends Thread {
     private String fileURL;
     private long timeOfDownload = -1;
     private long fileSize = -1;
+    private boolean successful = true;
 
     /**
      * @param filename Путь и имя файла, в который будет осуществляться загрузка.
@@ -72,6 +73,10 @@ public class URLDownloader extends Thread {
             timeOfDownload = System.currentTimeMillis() - tempTimeCounter;
         } catch (MalformedURLException e) {
             System.err.println("fileURL parsing error: \"" + strUrl + "\". Unknown protocol. Stopping download...");
+            successful = false;
+        } catch (Exception other) {
+            // System.err.println("Error while downloading \"" + filename + "\". URL: \"" + strUrl + "\".");
+            successful = false;
         }
     }
 
@@ -81,6 +86,10 @@ public class URLDownloader extends Thread {
 
     public long getFileSize() {
         return fileSize == 0 ? 1 : fileSize;
+    }
+
+    public boolean isDownloadedSuccessful() {
+        return successful && isDownloaded();
     }
 
     public String getURL() {

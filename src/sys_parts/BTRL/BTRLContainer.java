@@ -8,7 +8,7 @@ import sys_parts.BTRL.sys_parts.BTRLRecord;
 import java.util.ArrayList;
 
 /**
- * Created by Кирилл on 22.12.2017.
+ * Контейнер.
  */
 //BLOCK TEMPLATE RECORDS LANGUAGE CONTAINER
 public class BTRLContainer {
@@ -18,6 +18,12 @@ public class BTRLContainer {
     private ArrayList<BTRLField> constants;
     private ArrayList<BTRLField> parentFields;
 
+    /**
+     * Создаёт контейнер с записями типа @code{BTRLRecord}, обрабатывая текст, оформленный согласно шаблону.
+     *
+     * @param text Текст, оформленный согласно шаблону.
+     * @throws ParsingException В случае, если обработка текста невозможна. Обычно выбрасывается в случае, если текст не соотвествует шаблону.
+     */
     public BTRLContainer(String text) throws ParsingException {
         text = excludeCommentsFromText(text);
         records = new ArrayList<>();
@@ -27,16 +33,27 @@ public class BTRLContainer {
         ArrayList<String> blocks = getBlocksFromText(text);
         for (String block : blocks) {
             BTRLRecord tempRecord = new BTRLRecord(block, constants, parentFields);
-            if (!"init".equals(tempRecord.getRecordType())) { //Блоки init не должны оказаться в общем списке записей.
+            if (!"init".equals(tempRecord.getBlockType())) { //Блоки init не должны оказаться в общем списке записей.
                 records.add(tempRecord);
             }
         }
     }
 
+    /**
+     * Обрабатывает исходный код, делит его на блоки записей с полями. Возвращает их в виде массива строк.
+     * @param text Исходный код, оформленный согласно шаблону.
+     * @return Массив блоков, представленных в виде строк.
+     */
     private static ArrayList<String> getBlocksFromText(String text) {
         return AdditiveUtils.parseText(text, BLOCK_EXTRACTION_REGEXP);
     }
 
+    /**
+     * Метод обрабатывает исходный код, оформленный согласно шаблонам, находит фрагменты комментариев, исключает их из кода,
+     * Возвращает строку с кодом, из которого извлечены комментарии.
+     * @param text Исходный код, оформленный согласно шаблону.
+     * @return Строку с кодом, из которого извлечены комментарии.
+     */
     private static String excludeCommentsFromText(String text) {
         StringBuilder temp = new StringBuilder(text);
         ArrayList<String> comments = AdditiveUtils.parseText(text, COMMENT_EXTRACTION_REGEXP);
@@ -49,10 +66,16 @@ public class BTRLContainer {
         return temp.toString();
     }
 
+    /**
+     * @return Массив с записями типа @code{BTRLRecord}
+     */
     public ArrayList<BTRLRecord> getRecords() {
         return records;
     }
 
+    /**
+     * Заполняет встроенный массив констант константами по умолчанию.
+     */
     private void fillDefaultConstantList() {
         constants.add(new BTRLField("$EMPTY", ""));
     }

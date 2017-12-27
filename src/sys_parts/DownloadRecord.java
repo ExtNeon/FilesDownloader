@@ -4,7 +4,7 @@ import sys_parts.BTRL.exceptions.FieldNotExistException;
 import sys_parts.BTRL.sys_parts.BTRLRecord;
 
 /**
- * Шаблон,
+ * Коллекция полей, необходимых для создания объекта SiteResourcesParser.
  */
 public class DownloadRecord {
     public String site_url = "";
@@ -14,6 +14,12 @@ public class DownloadRecord {
     public String load_path = "";
     public int files_load_limit = 0;
 
+    /**
+     * Метод читает значения определённых полей с записи @code{inputRecord} и  записывает их в свои поля.
+     *
+     * @param inputRecord Запись типа @code{BTRLRecord}, содержащая определённые поля.
+     * @throws FieldNotExistException В случае, если необходимые поля не найдены.
+     */
     public DownloadRecord(BTRLRecord inputRecord) throws FieldNotExistException {
         this.site_url = inputRecord.getFieldByName("site-url").getValue();
         this.file_extension = inputRecord.getFieldByName("extension").getValue();

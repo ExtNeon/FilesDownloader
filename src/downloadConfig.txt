@@ -13,6 +13,7 @@ https://vk.com/;(?<=data-image=\")[^\"]*([jJ][pP][gG])(?=\");jpg;
 
 Возможности:
     * Имеется возможность объявления констант.
+    * Возможность задачи значения по умолчанию.
 
 
 Основная единица языка - блоки. Начинаются с символа ':'. За ними в фигурных скобках следуют поля
@@ -38,6 +39,8 @@ https://vk.com/;(?<=data-image=\")[^\"]*([jJ][pP][gG])(?=\");jpg;
 
 **/
 
+
+/** Блок инициализации. Тут объявляем значения по умолчанию и константы. **/
 :init {
     /**Константы:**/
 
@@ -50,7 +53,7 @@ https://vk.com/;(?<=data-image=\")[^\"]*([jJ][pP][gG])(?=\");jpg;
     regexp: $EMPTY;
     extension: $EMPTY;
     parent-link: $EMPTY;
-    files-load-limit: 3; /** Максимум - 3 файла с каждого сайта **/
+    files-load-limit: 3; /** Максимум - 3 файла с каждого сайта по умолчанию **/
     root-load-path: src\download\;
 }
 
@@ -59,7 +62,7 @@ https://vk.com/;(?<=data-image=\")[^\"]*([jJ][pP][gG])(?=\");jpg;
     site-url: https://zvonko.me/;
     regexp: $mp3AllRegexp;
     extension: mp3;
-    files-load-limit: 0; /** Выключим загрузку с этого сайта **/
+    files-load-limit: 1;
 }
 
 :record {
@@ -70,8 +73,9 @@ https://vk.com/;(?<=data-image=\")[^\"]*([jJ][pP][gG])(?=\");jpg;
 }
 
 :record {
-    site-url: https://yandex.ru/;
-    regexp: (?<=data-image=\")[^\"]*([jJ][pP][gG])(?=\");
+    site-url: http://boombob.ru/picture.php?id=108582/;
+    regexp: (?<=href=\")[^\"]*(jpg)(?=\");
     extension: jpg;
+    parent-link: http://boombob.ru/;
     files-load-limit: 10; /** Для примера переопределения параметра, зададим тут значение 10 **/
 }
