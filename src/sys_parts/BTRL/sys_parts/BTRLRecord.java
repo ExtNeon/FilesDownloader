@@ -37,7 +37,7 @@ public class BTRLRecord {
         blockType = getBlockType(blockText);
         fields = parseFields(collectAllSTR(AdditiveUtils.parseText(blockText, GET_BLOCK_CONTENT_REGEXP)), constants, parentFields);
         if (blockType.equals("init")) {
-            readAndAddConstantsIntoConstList(blockText, constants, fields);
+            readConstantsIntoConstList(blockText, constants, fields);
             parentFields.addAll(fields);
         }
     }
@@ -98,7 +98,7 @@ public class BTRLRecord {
      * @param constants Массив констант типа @code{BTRLField}, в который будут добавлены прочитанные константы.
      * @param fields Поля блока, из которого будут удалены ошибочно прочитанные в качестве полей константы.
      */
-    private static void readAndAddConstantsIntoConstList(String block, ArrayList<BTRLField> constants, ArrayList<BTRLField> fields) {
+    private static void readConstantsIntoConstList(String block, ArrayList<BTRLField> constants, ArrayList<BTRLField> fields) {
         Matcher constMatcher = Pattern.compile(CONST_MATCH_REGEXP).matcher(block);
         while (constMatcher.find()) {
             if (constMatcher.groupCount() > 1) {

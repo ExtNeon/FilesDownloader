@@ -12,51 +12,64 @@ import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 /**
- * @author доработка - Малякин Кирилл.
+ * Программа, загружающая ресурсы с сайтов.
+ * Все данные берутся из конфигурационного файла собственной разработки.
+ * @author Малякин Кирилл. Гр 15-20.
  */
 
 
 public class FilesDownloader {
 
-    private static final String URL_FILE = "src\\svc_files\\inFile.txt"; //Файл с записями
+    private static final String URL_FILE = "src\\downloadConfig.txt"; //Файл с записями
     private static final String DOWNLOAD_RECORDS_LIST_FILE = "src\\svc_files\\outFile.txt"; //Файл, в который сохраняются ссылки на музыку
+    private static final boolean DELETE_CORRUPTED_FILES = true; //Если загрузка не завершилась успешно, повреждённые файлы удаляются.
+
 
     private static ArrayList<SiteResourcesParser> sites = new ArrayList<>(); //Сайты
 
+
     public static void main(String[] args) {
-        readDownloadRecords();
+        readDownloadRecords(URL_FILE, DOWNLOAD_RECORDS_LIST_FILE, sites);
         downloadFiles();
         System.out.println("Complete.");
     }
 
-    private static void readDownloadRecords() {
-        try (BufferedWriter inputRecordsFile = new BufferedWriter(new FileWriter(DOWNLOAD_RECORDS_LIST_FILE));
-             BufferedReader inFileReader = new BufferedReader(new FileReader(URL_FILE))) {
+    /**
+     * Метод читает конфигурационный файл, создаёт сайты, собирает ссылки на ресурсы, сохраняя их в файл @code{linksListFile}
+     * и в массив объектов SiteResourceParser @code{sitelist}
+     *
+     * @param configFilename Путь и название файла конфигурации
+     * @param linksListFile  Путь и название файла, в который будут сохранены ссылки на ресурсы
+     * @param sitelist       Массив объектов SiteResourceParser, в который будут собраны результаты
+     */
+    private static void readDownloadRecords(String configFilename, String linksListFile, ArrayList<SiteResourcesParser> sitelist) {
+        try (BufferedWriter inputRecordsFile = new BufferedWriter(new FileWriter(linksListFile));
+             BufferedReader inFileReader = new BufferedReader(new FileReader(configFilename))) {
             BTRLContainer sitesQuequeContainer = new BTRLContainer(inFileReader.lines().collect(Collectors.joining("\n")));
             for (BTRLRecord currentRecord : sitesQuequeContainer.getRecords()) {
                 try {
                     DownloadRecord temporaryDownloadRecord = new DownloadRecord(currentRecord);
                     System.out.println("Processing \"" + temporaryDownloadRecord.site_url + "\"...");
-                    sites.add(new SiteResourcesParser(temporaryDownloadRecord));
-                    for (URLDownloader downloader : sites.get(sites.size() - 1).getDownloaders()) {
+                    sitelist.add(new SiteResourcesParser(temporaryDownloadRecord));
+                    for (URLDownloader downloader : sitelist.get(sitelist.size() - 1).getDownloaders()) {
                         inputRecordsFile.write(downloader.getURL() + "\n");
                     }
 
                 } catch (FieldNotExistException ignored) {
-                    System.err.println("Error #14: Field not exist");
+                    System.err.println("Error #14: Field doesn\'t exist");
                 }
             }
         } catch (IOException e) {
             System.err.println("Global IO error.");
             e.printStackTrace();
         } catch (ParsingException e) {
-            System.err.println("Input file parsing error.");
+            System.err.println("Config file parsing error.");
             e.printStackTrace();
         }
     }
 
     /**
-     * Метод скачивает музыку из сохранённых ссылок в заранее определённую папку.
+     * Метод запускает загрузку файлов по ранее собранным ссылкам, ждёт окончания загрузки и в процессе отображает её прогресс.
      */
     private static void downloadFiles() {
         for (SiteResourcesParser site : sites) {
@@ -69,20 +82,23 @@ public class FilesDownloader {
         int downloadersCount = downloaders.size();
         delay(1000);
         long lastMsCount = System.currentTimeMillis();
-        waitWhileAllFilesWillBeDownloaded(downloaders);
-        System.out.println("\n" + downloadersCount + " files was downloaded successful.\n" +
+        int downloadedCorrectly = getCountOfSuccessfulDownloadedFiles(downloaders);
+        System.out.println("\n" + downloadedCorrectly + (downloadedCorrectly == 1 ? " file" : " files") + " was downloaded successful.\n" +
+                (downloadedCorrectly == downloadersCount ? "" : (downloadersCount - downloadedCorrectly) + " files wasn\'t downloaded correctly\n") +
                 "It spend: " + formatSecondsToNormalTime((int) ((System.currentTimeMillis() - lastMsCount) / 1000)));
     }
 
     /**
      * Метод ожидает, пока все загрузчики не завершат работу. Дополнительно выводит прогресс загрузок, исходя из количества
-     * загруженных файлов.
+     * загруженных файлов. Возвращает число успешно загруженных файлов.
      *
      * @param downloaders ArrayList c объектами класса sys_parts.URLDownloader, завершения работы которых необходимо ждать.
+     * @return Количество успешно загруженных файлов.
      */
-    private static void waitWhileAllFilesWillBeDownloaded(ArrayList<URLDownloader> downloaders) {
+    private static int getCountOfSuccessfulDownloadedFiles(ArrayList<URLDownloader> downloaders) {
         int downloadedPercent, i = 0;
         int downloadersCount = downloaders.size();
+        int downloadedCorrectly = downloaders.size();
         System.out.print(getPercentLine(0, 60) + " done");
         while (downloaders.size() > 0) {
             if (i >= downloaders.size()) {
@@ -90,13 +106,20 @@ public class FilesDownloader {
             } else {
                 if (downloaders.get(i).isDownloaded()) {
                     downloadedPercent = 100 - (((downloaders.size() - 1) * 100) / downloadersCount);
-                    System.out.print("\r" + downloaders.get(i).getFilename() + " [" + formatFileSize(downloaders.get(i).getFileSize()) + "] - done (~" + (formatFileSize((long) (downloaders.get(i).getFileSize() / ((downloaders.get(i).getTimeOfDownload() / 1000.))))) + "/s)" +
+                    if (!downloaders.get(i).isDownloadedSuccessful()) {
+                        downloadedCorrectly--;
+                        if (DELETE_CORRUPTED_FILES) {
+                            new File(downloaders.get(i).getFilename()).delete();
+                        }
+                    }
+                    System.out.print("\r" + downloaders.get(i).getFilename() + " [" + formatFileSize(downloaders.get(i).getFileSize()) + "] - " + (downloaders.get(i).isDownloadedSuccessful() ? "done (~" + (formatFileSize((long) (downloaders.get(i).getFileSize() / ((downloaders.get(i).getTimeOfDownload() / 1000.))))) + "/s)" : "failed. This file will be deleted") +
                             "\n" + getPercentLine(downloadedPercent, 60) + " done");
                     downloaders.remove(i);
                     i = 0;
                 } else i++;
             }
         }
+        return downloadedCorrectly;
     }
 
 
@@ -135,25 +158,6 @@ public class FilesDownloader {
         return String.format("%d:%02d:%02d", h, m, s);
     }
 
-
-    /**
-     * Метод читает файл @code{filename} и возвращает все строки данного файла, за исключением закомментированных (// в начале)
-     *
-     * @param filename файл, из которого необходимо произвести чтение.
-     * @return ArrayList cо строками.
-     */
-    private static ArrayList<String> readAllLinesInFile(String filename) throws IOException {
-        ArrayList<String> list = new ArrayList<>();
-        try (BufferedReader urlFile = new BufferedReader(new FileReader(URL_FILE))) {
-            String readedUrl;
-            while ((readedUrl = urlFile.readLine()) != null) {
-                if (readedUrl.startsWith("//")) continue;
-                list.add(readedUrl);
-            }
-        }
-        return list;
-    }
-
     /**
      * Задерживает выполнение текущего потока на определённое количество миллисекунд.
      *
@@ -166,6 +170,11 @@ public class FilesDownloader {
         }
     }
 
+    /**
+     * Собирает все загрузчики с объектов SiteResourceParser в один массив.
+     * @param sites Объекты типа SiteResourcesParser, из которых будут собраны загрузчики
+     * @return Массив объектов URLDownloader
+     */
     private static ArrayList<URLDownloader> collectAllDownloadersFromSites(ArrayList<SiteResourcesParser> sites) {
         ArrayList<URLDownloader> downloaders = new ArrayList<>();
         for (SiteResourcesParser site : sites) {
@@ -174,6 +183,11 @@ public class FilesDownloader {
         return downloaders;
     }
 
+    /**
+     * Возвращает отформатированный размер информации, исходя из количества байт.
+     * @param size Исходный размер массива информации (файла, ...)
+     * @return Отформатированная строка
+     */
     private static String formatFileSize(long size) {
         if (size >= 1024 * 1024 * 1024) {
             return new DecimalFormat("#0.00").format(size / (1024 * 1024 * 1024)) + " GiB";
